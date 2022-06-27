@@ -99,6 +99,10 @@ public class AsmBuilder {
         operation("ldb", register,  label);
     }
 
+    public Function beginFunction(String name) {
+        Function function = new Function(this, name);
+        return function;
+    }
     public String build() {
         return builder.toString();
     }

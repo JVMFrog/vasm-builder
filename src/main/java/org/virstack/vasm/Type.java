@@ -1,6 +1,6 @@
 package org.virstack.vasm;
 
-public enum Operands {
+public enum Type {
     REGISTER,
     WORD,
     HALF,
