@@ -1,7 +1,10 @@
 package org.virstack.vasm;
 
 public class Function {
+
+    private Context context;
     private final AsmBuilder builder;
+
     String name;
 
     public Function(AsmBuilder builder, String name){
@@ -10,7 +13,7 @@ public class Function {
     }
 
     public Value localValue(Type type, String name){
-        Value value = new Value();
+        Value value = context.newValue();
         value.name = name;
         value.type = type;
         return value;

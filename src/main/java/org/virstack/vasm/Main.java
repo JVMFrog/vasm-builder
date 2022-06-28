@@ -12,5 +12,10 @@ public class Main {
         builder.add(Registers.R2, Registers.R0, Registers.R1);
         builder.end();
         System.out.println(builder.build());
+
+        Context context = new Context();
+        Value value = context.newValue();
+        value.minus(context.intermediateValue()).minus(value);
+        return;
     }
 }
