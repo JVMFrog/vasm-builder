@@ -13,39 +13,32 @@ public class Sequence {
         return this;
     }
 
-    public Sequence add(Value value) {
+    private Sequence operation(OperationType type, Value value) {
         Operation operation = context.newOperation();
-        operation.type = OperationType.ADD;
+        operation.type = type;
+        operation.mutable = true;
         operation.operands.add(middles);
         operation.operands.add(middles);
         operation.operands.add(value);
         return this;
+    }
+    public Sequence add(Value value) {
+        return operation(OperationType.ADD, value);
     }
 
     public Sequence minus(Value value) {
-        Operation operation = context.newOperation();
-        operation.type = OperationType.MINUS;
-        operation.operands.add(middles);
-        operation.operands.add(middles);
-        operation.operands.add(value);
-        return this;
+        return operation(OperationType.MINUS, value);
     }
 
     public Sequence mul(Value value) {
-        Operation operation = context.newOperation();
-        operation.type = OperationType.MUL;
-        operation.operands.add(middles);
-        operation.operands.add(middles);
-        operation.operands.add(value);
-        return this;
+        return operation(OperationType.MUL, value);
     }
 
     public Sequence div(Value value) {
-        Operation operation = context.newOperation();
-        operation.type = OperationType.DIV;
-        operation.operands.add(middles);
-        operation.operands.add(middles);
-        operation.operands.add(value);
-        return this;
+        return operation(OperationType.DIV, value);
+    }
+
+    public Value value() {
+        return middles;
     }
 }

@@ -1,109 +1,108 @@
 package org.virstack.vasm;
 
+
+import java.util.Arrays;
+import java.util.Stack;
+
+
 public class AsmBuilder {
-    private StringBuilder builder = new StringBuilder();
-    private StringBuilder stackSection = new StringBuilder();
-    private StringBuilder codeSection = new StringBuilder();
 
-    private int lastStackAddress = 0;
-    private int lastCodeAddress = 0;
+    private final Assembler assembler = new Assembler();
+    private final Stack<Registers> registers = new Stack<>();
 
-    public void begin() {
-        stackSection = new StringBuilder();
-        codeSection = new StringBuilder();
+    {
+        registers.addAll(Arrays.asList(Registers.R0, Registers.R1, Registers.R2, Registers.R3, Registers.R4, Registers.R5));
     }
 
-
-    public void end() {
-        builder.append(".stack\n")
-                .append(stackSection)
-                .append(".code\n")
-                .append(codeSection);
-    }
-
-    private Label stackLabel(String code, int size) {
-        stackSection.append("\t").append(code).append("\n");
-        lastStackAddress +=size;
-        return new Label(lastStackAddress - size);
-    }
-
-    public Label allocWord(long value) {
-        return stackLabel("word " +value, 8);
-    }
-
-    public Label allocHalf(int value) {
-        return stackLabel("half " +value, 4);
-    }
-
-    public Label allocByte(byte value) {
-        return stackLabel("byte " +value, 1);
-    }
-
-    public Label label() {
-        return new Label(lastCodeAddress);
-    }
-    private void operation(String opcode, Registers result, Registers first, Registers second) {
-        lastCodeAddress += 4;
-        codeSection.append("\t")
-                .append(opcode).append(" ")
-                .append(result).append(" ")
-                .append(first).append(" ")
-                .append(second).append("\n");
-    }
-
-    private void operation(String opcode, Registers first, Label address) {
-        lastCodeAddress += 6;
-        codeSection.append("\t")
-                .append(opcode).append(" ")
-                .append(first).append(" ")
-                .append(address).append("\n");
-    }
-
-    public void add(Registers result, Registers first, Registers second) {
-        operation("add", result, first, second);
-    }
-
-    public void sub(Registers result, Registers first, Registers second) {
-        operation("sub", result, first, second);
-    }
-
-    public void mul(Registers result, Registers first, Registers second) {
-        operation("mul", result, first, second);
-    }
-
-    public void div(Registers result, Registers first, Registers second) {
-        operation("div", result, first, second);
-    }
-
-    public void bigger(Registers result, Registers first, Registers second) {
-        operation("cmpb", result, first, second);
-    }
-
-    public void less(Registers result, Registers first, Registers second) {
-        operation("cmpl", result, first, second);
-    }
-
-    public void equals(Registers result, Registers first, Registers second) {
-        operation("cmp", result, first, second);
-    }
-
-    public void loadWord(Registers register, Label label) {
-        operation("ld", register,  label);
-    }
-
-    public void loadHalf(Registers register, Label label) {
-        operation("ldh", register,  label);
-    }
-
-    public void loadByte(Registers register, Label label) {
-        operation("ldb", register,  label);
+    public Assembler getAssembler() {
+        return assembler;
     }
 
     public Function beginFunction(String name) {
-        Function function = new Function(this, name);
-        return function;
+        return new Function(this, name);
     }
-    public String build() {
-        return builder.toString();
+
+    private Registers allocateRegister() {
+        return registers.pop();
     }
+
+    private void loadValue(Value value) {
+        if (!value.isLoaded) {
+            value.isLoaded = true;
+            value.register = allocateRegister();
+            if (value.type == Type.WORD)
+                assembler.loadWord(value.register, assembler.allocWord(value.name, value.value));
+            else if (value.type == Type.HALF) {
+                assembler.loadHalf(value.register, assembler.allocHalf(value.name, value.value));
+            } else if (value.type == Type.BYTE) {
+                assembler.loadByte(value.register, assembler.allocByte(value.name, value.value));
+            }
+        }
+    }
+
+    private void disposeValue(Operation operation, Value value) {
+
+        if (value.lastUse == operation.index) {
+            value.isLoaded = false;
+            registers.push(value.register);
+            value.register = null;
+        }
+    }
+
+    private void buildSetOperation(Operation operation) {
+        Value first = operation.operands.get(0);
+        Value second = operation.operands.get(1);
+
+
+        if (!first.isLoaded && second.isConst)
+            first.value = second.value;
+        else if (second.isLoaded) {
+            first.register = allocateRegister();
+            first.isLoaded = true;
+            assembler.mov(first.register, second.register);
+        }
+    }
+
+    private void buildMathOperation(Operation operation, MathOperation mathOperation) {
+        Value result = operation.operands.get(0);
+        Value first = operation.operands.get(1);
+        Value second = operation.operands.get(2);
+
+        loadValue(first);
+        loadValue(second);
+
+        if (result.register == null)
+            result.register = allocateRegister();
+
+        mathOperation.run(result.register, first.register, second.register);
+
+        disposeValue(operation, result);
+        disposeValue(operation, first);
+        disposeValue(operation, second);
+    }
+
+
+
+    public void build(Context context) {
+        assembler.begin();
+        context.analise();
+        for (Operation i : context.getOperations()) {
+            if (i.type == OperationType.SET)
+                buildSetOperation(i);
+            else if (i.type == OperationType.ADD)
+                buildMathOperation(i, assembler::add);
+            else if (i.type == OperationType.MINUS)
+                buildMathOperation(i, assembler::sub);
+            else if (i.type == OperationType.MUL)
+                buildMathOperation(i, assembler::mul);
+            else if (i.type == OperationType.DIV)
+                buildMathOperation(i, assembler::div);
+        }
+        assembler.end();
+    }
+}
+
+
+interface MathOperation {
+    void run(Registers result, Registers first, Registers second);
 }

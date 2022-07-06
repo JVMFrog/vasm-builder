@@ -1,14 +1,14 @@
 package org.virstack.vasm;
 
 public class Label {
-    int address = 0;
+    String name;
 
-    Label(int address) {
-        this.address = address;
+    Label(String name) {
+        this.name = name;
     }
 
     @Override
     public String toString() {
-        return Integer.toHexString(address);
+        return name;
     }
 }

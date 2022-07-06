@@ -7,8 +7,10 @@ public class Value {
     public ValueState state;
     public Type type;
     public boolean isLocal;
-    public int lastUse;
-    public boolean isConst;
+    int lastUse;
+    boolean isConst;
+    boolean isLoaded;
+    Registers register = null;
 
     public Sequence add(Value value) {
         return context.newSequence().wrap(this).add(value);
@@ -18,8 +20,26 @@ public class Value {
         return context.newSequence().wrap(this).minus(value);
     }
 
-    public Value copy(Value value) {
-        this.value = value.value;
+    public Value set(Value value) {
+        Operation operation = context.newOperation();
+        operation.type = OperationType.SET;
+
+        operation.operands.add(this);
+        operation.operands.add(value);
+
+
         return this;
+    }
+
+    public Value set(String value) {
+        Value constValue = context.allocConst(type, value);
+        set(constValue);
+        return this;
+    }
+
+    @Override
+    public String toString() {
+        String[] array = super.toString().split("\\.");
+        return array[array.length-1].toLowerCase();
     }
 }

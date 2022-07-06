@@ -2,20 +2,25 @@ package org.virstack.vasm;
 
 public class Main {
     public static void main(String[] args) {
-        AsmBuilder builder = new AsmBuilder();
-        builder.begin();
-        Label a = builder.allocHalf(100);
-        Label b = builder.allocHalf(200);
-
-        builder.loadHalf(Registers.R0, a);
-        builder.loadHalf(Registers.R1, b);
-        builder.add(Registers.R2, Registers.R0, Registers.R1);
-        builder.end();
-        System.out.println(builder.build());
-
+        AsmBuilder asmBuilder = new AsmBuilder();
         Context context = new Context();
-        Value value = context.newValue();
-        value.minus(context.intermediateValue()).minus(value);
+
+        Value value = context.newValue("a", Type.HALF).set("100");
+        Value value2 = context.newValue("b", Type.HALF).set("3");
+        Value value3 = context.newValue(Type.HALF);
+
+
+        value3.set(value.add(value2).value());
+        value3.minus(value);
+
+
+
+        asmBuilder.build(context);
+        System.out.println("middles bvasm:");
+        System.out.println(context);
+        System.out.println("vasm code:");
+        System.out.println(asmBuilder.getAssembler().flush());
+
         return;
     }
 }

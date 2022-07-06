@@ -13,9 +13,8 @@ public class Function {
     }
 
     public Value localValue(Type type, String name){
-        Value value = context.newValue();
+        Value value = context.newValue(type);
         value.name = name;
-        value.type = type;
         return value;
     }
 
