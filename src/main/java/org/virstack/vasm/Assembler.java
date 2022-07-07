@@ -26,8 +26,8 @@ public class Assembler {
         return new Label(name);
     }
 
-    public Label allocWord(String name, String value) {
-        return stackLabel(name, "word " +value);
+    public Label alloc(Type type, String name, String value) {
+        return stackLabel(name, (type+" ").toLowerCase() +value);
     }
 
     public Label allocHalf(String name, String value) {
@@ -89,16 +89,12 @@ public class Assembler {
         operation("cmp", result, first, second);
     }
 
-    public void loadWord(Registers register, Label label) {
-        operation("ld", register,  label);
+    public void load(Type type, Registers register, Label label) {
+        operation("ld" + type.getPrefix(), register,  label);
     }
 
-    public void loadHalf(Registers register, Label label) {
-        operation("ldh", register,  label);
-    }
-
-    public void loadByte(Registers register, Label label) {
-        operation("ldb", register,  label);
+    public void store(Type type, Registers register, Label label) {
+        operation("str" + type.getPrefix(), register, label);
     }
 
     public String flush() {

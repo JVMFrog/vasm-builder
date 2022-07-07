@@ -10,6 +10,7 @@ public class Value {
     int lastUse;
     boolean isConst;
     boolean isLoaded;
+    boolean isAllocated;
     Registers register = null;
 
     public Sequence add(Value value) {
@@ -32,8 +33,7 @@ public class Value {
     }
 
     public Value set(String value) {
-        Value constValue = context.allocConst(type, value);
-        set(constValue);
+        this.value = value;
         return this;
     }
 

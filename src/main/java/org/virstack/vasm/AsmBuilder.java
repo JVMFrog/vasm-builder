@@ -2,6 +2,7 @@ package org.virstack.vasm;
 
 
 import java.util.Arrays;
+import java.util.ListIterator;
 import java.util.Stack;
 
 
@@ -9,6 +10,10 @@ public class AsmBuilder {
 
     private final Assembler assembler = new Assembler();
     private final Stack<Registers> registers = new Stack<>();
+    private final Stack<Value> valuesUsingRegisters = new Stack<>();
+    private final Stack<Value> nearValuesUsingRegisters = new Stack<>();
+    int operationIndex = 0;
+    private Context context;
 
     {
         registers.addAll(Arrays.asList(Registers.R0, Registers.R1, Registers.R2, Registers.R3, Registers.R4, Registers.R5));
@@ -22,30 +27,59 @@ public class AsmBuilder {
         return new Function(this, name);
     }
 
-    private Registers allocateRegister() {
-        return registers.pop();
+    private void storeValue(Value value) {
+        value.isLoaded = false;
+
+        assembler.store(value.type, value.register, new Label(value.name));
+    }
+    private void allocateRegister(Value value) {
+        if (registers.size() > 0) {
+            value.register = registers.pop();
+            valuesUsingRegisters.push(value);
+            return;
+        }
+
+
+        Value storable = null;
+
+        ListIterator<Operation> iterator = context.getOperations().listIterator(operationIndex);
+        nearValuesUsingRegisters.addAll(valuesUsingRegisters);
+
+        while (iterator.hasNext()) {
+            Operation operation = iterator.next();
+            for (int i = 0; i < operation.operands.size(); i++) {
+                Value val = operation.operands.get(i);
+                if (nearValuesUsingRegisters.remove(val)) {
+                    storable = val;
+                }
+
+            }
+        }
+
+        value.register = storable.register;
+        storeValue(storable);
+
+        storable.register = null;
+        valuesUsingRegisters.push(value);
+        valuesUsingRegisters.remove(storable);
+
     }
 
     private void loadValue(Value value) {
         if (!value.isLoaded) {
             value.isLoaded = true;
-            value.register = allocateRegister();
-            if (value.type == Type.WORD)
-                assembler.loadWord(value.register, assembler.allocWord(value.name, value.value));
-            else if (value.type == Type.HALF) {
-                assembler.loadHalf(value.register, assembler.allocHalf(value.name, value.value));
-            } else if (value.type == Type.BYTE) {
-                assembler.loadByte(value.register, assembler.allocByte(value.name, value.value));
-            }
+            allocateRegister(value);
+            assembler.load(value.type, value.register, value.isAllocated ? new Label(value.name) : assembler.alloc(value.type, value.name, value.value));
+            value.isAllocated = true;
         }
     }
 
     private void disposeValue(Operation operation, Value value) {
-
         if (value.lastUse == operation.index) {
-            value.isLoaded = false;
+            valuesUsingRegisters.remove(value);
             registers.push(value.register);
             value.register = null;
+            value.isLoaded = false;
         }
     }
 
@@ -57,7 +91,7 @@ public class AsmBuilder {
         if (!first.isLoaded && second.isConst)
             first.value = second.value;
         else if (second.isLoaded) {
-            first.register = allocateRegister();
+            allocateRegister(first);
             first.isLoaded = true;
             assembler.mov(first.register, second.register);
         }
@@ -72,7 +106,7 @@ public class AsmBuilder {
         loadValue(second);
 
         if (result.register == null)
-            result.register = allocateRegister();
+            allocateRegister(result);
 
         mathOperation.run(result.register, first.register, second.register);
 
@@ -82,10 +116,12 @@ public class AsmBuilder {
     }
 
 
-
     public void build(Context context) {
+        this.context = context;
         assembler.begin();
         context.analise();
+        operationIndex = 0;
+
         for (Operation i : context.getOperations()) {
             if (i.type == OperationType.SET)
                 buildSetOperation(i);
@@ -97,6 +133,7 @@ public class AsmBuilder {
                 buildMathOperation(i, assembler::mul);
             else if (i.type == OperationType.DIV)
                 buildMathOperation(i, assembler::div);
+            operationIndex++;
         }
         assembler.end();
     }
